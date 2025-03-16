@@ -9,13 +9,8 @@ use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Task;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-
 use Illuminate\Support\Facades\DB;
-
 use Illuminate\Support\Facades\Log;
-
-use function auth;
-use function dd;
 
 class TaskController extends Controller
 {
