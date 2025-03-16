@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\TaskController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,10 @@ Route::middleware(['auth', 'verified'])
         Route::get('complete/{task}', 'complete')->name('complete');
     });
 
+Route::resource('tags', TagController::class)
+    ->middleware('auth')
+    ->except('show');
+
 Route::middleware('auth')
     ->prefix('profile')
     ->name('profile.')
@@ -37,5 +42,9 @@ Route::middleware('auth')
         Route::patch('', 'update')->name('update');
         Route::delete('', 'destroy')->name('destroy');
     });
+
+Route::fallback(function () {
+    abort(404);
+});
 
 require __DIR__.'/auth.php';

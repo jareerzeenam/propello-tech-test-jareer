@@ -10,6 +10,13 @@ use App\Models\Task;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 
+use Illuminate\Support\Facades\DB;
+
+use Illuminate\Support\Facades\Log;
+
+use function auth;
+use function dd;
+
 class TaskController extends Controller
 {
     public function index(): View
@@ -22,26 +29,41 @@ class TaskController extends Controller
     public function create(): View
     {
 
-        return view('tasks.create');
+        $tags = auth()->user()?->tags ?? [];
+
+        return view('tasks.create', compact('tags'));
     }
 
     public function edit(Task $task): View
     {
         $this->authorize('update', $task);
 
-        return view('tasks.edit', compact('task'));
+        $tags = auth()->user()?->tags ?? [];
+
+        return view('tasks.edit', compact('task', 'tags'));
     }
 
     public function store(CreateTaskRequest $request): RedirectResponse
     {
-        Task::query()->create(
-            array_merge(
+        try {
+            DB::beginTransaction();
+            $task = Task::create(array_merge(
                 $request->validated(),
-                ['user_id' => auth()->user()->id]
-            )
-        );
+                ['user_id' => auth()->id()]
+            ));
 
-        return redirect()->to(route('tasks.home'));
+            if ($request->has('tags')) {
+                $task->tags()->attach($request->tags);
+            }
+            DB::commit();
+
+            return redirect()->route('tasks.home')->with('success', 'Task created successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Task creation failed: ' . $e->getMessage(), ['exception' => $e]);
+
+            return redirect()->back()->with('error', 'Something went wrong! Please try again.');
+        }
     }
 
     public function update(UpdateTaskRequest $request, Task $task): RedirectResponse
@@ -50,7 +72,9 @@ class TaskController extends Controller
 
         $task->update($request->validated());
 
-        return redirect()->to(route('tasks.home'));
+        $task->tags()->sync($request->tags);
+
+        return redirect()->to(route('tasks.home'))->with('success', 'Task updated successfully!');
     }
 
     public function destroy(Task $task): RedirectResponse
@@ -59,7 +83,7 @@ class TaskController extends Controller
 
         $task->delete();
 
-        return redirect()->to(route('tasks.home'));
+        return redirect()->to(route('tasks.home'))->with('success', 'Task deleted successfully!');
     }
 
     public function complete(Task $task): RedirectResponse
